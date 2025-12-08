@@ -1,0 +1,49 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-header {
+  background: #2c3e50;
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tabs button {
+  padding: 0.5rem 1rem;
+  background: #34495e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tabs button:hover {
+  background: #4a5f7a;
+}
+
+.tabs button.active {
+  background: #3498db;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
