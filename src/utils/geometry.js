@@ -260,14 +260,17 @@ function pointOnSegment(pt, a, b, tol = 1e-6) {
   return Math.hypot(pt.x - projX, pt.y - projY) < tol
 }
 
-export function intersectProfileWithRay(profile, targetPoint, options = {}) {
-  const pts = sampleProfilePoints(profile, options)
+export function intersectProfileWithRay(targetPoint, sampledPoints, options = {}) {
+  let pts = sampledPoints || []
   if (!pts.length || (!targetPoint.x && !targetPoint.y)) return null
 
+  const centroid = compute2DCentroid(pts)
+  const targetPointOnSegment = { x: targetPoint.x + centroid.x, y: targetPoint.y + centroid.y }
+  
   // First check if the point is on any segment of the profile
   for (let i = 0; i < pts.length - 1; i++) {
-    if (pointOnSegment(targetPoint, pts[i], pts[i + 1])) {
-      return { x: targetPoint.x, y: targetPoint.y }
+    if (pointOnSegment(targetPointOnSegment, pts[i], pts[i + 1])) {
+      return { x: targetPointOnSegment.x, y: targetPointOnSegment.y }
     }
   }
 
@@ -276,6 +279,7 @@ export function intersectProfileWithRay(profile, targetPoint, options = {}) {
   if (mag < 1e-9) return null
   const dir = { x: targetPoint.x / mag, y: targetPoint.y / mag }
   const origin = { x: 0, y: 0 }
+  pts = pts.map(p => ({ x: p.x - centroid.x, y: p.y - centroid.y }))
 
   let best = null
   for (let i = 0; i < pts.length - 1; i++) {
@@ -285,7 +289,19 @@ export function intersectProfileWithRay(profile, targetPoint, options = {}) {
     }
   }
 
-  return best ? best.point : null
+  return best ? { x: best.point.x + centroid.x, y: best.point.y + centroid.y } : null
+}
+
+export function compute2DCentroid(points = []) {
+  if (!points.length) return { x: 0, y: 0 }
+  let sumX = 0
+  let sumY = 0
+  points.forEach(p => {
+    sumX += p.x || 0
+    sumY += p.y || 0
+  })
+  const n = points.length
+  return { x: sumX / n, y: sumY / n }
 }
 
 function normalizeAngle(angle) {
@@ -300,21 +316,24 @@ export function mergeProfilesByAngle(profile1, profile2, options = {}) {
   const pts2 = sampleProfilePoints(profile2, options)
   const merged = []
 
-  const collect = (sourcePts, otherProfile, isSourceProfile1) => {
+  const collect = (sourcePts, otherPts, isSourceProfile1) => {
     sourcePts.forEach((pt) => {
-      const match = intersectProfileWithRay(otherProfile, pt, options)
-      if (!match) return
-      const angle = normalizeAngle(Math.atan2(pt.y, pt.x))
+      const centroid = compute2DCentroid(sourcePts)
+      const rpt = { x: pt.x - centroid.x, y: pt.y - centroid.y }
+      const match = intersectProfileWithRay(rpt, otherPts, options)
+      if (!match) return;
       if (isSourceProfile1) {
+        const angle = normalizeAngle(Math.atan2(pt.y, pt.x));
         merged.push({ angle, point1: pt, point2: match })
       } else {
+        const angle = normalizeAngle(Math.atan2(match.y, match.x));
         merged.push({ angle, point1: match, point2: pt })
       }
     })
   }
 
-  collect(pts1, profile2, true)
-  collect(pts2, profile1, false)
+  collect(pts1, pts2, true)
+  collect(pts2, pts1, false)
 
   merged.sort((a, b) => a.angle - b.angle)
   return merged
@@ -324,19 +343,13 @@ function findProfile(profiles = [], id) {
   return (profiles || []).find(p => p.id === id) || null
 }
 
-export function interpolateProfileAtLength(length, profileAssignments, profiles, options = {}) {
+export function interpolateProfileAtLength(length, profileAssignments, profiles, options = {}, isStart = true) {
   if (!Array.isArray(profileAssignments) || profileAssignments.length === 0) return null
 
   const sorted = [...profileAssignments].sort((a, b) => a.length - b.length)
-  if (length <= sorted[0].length + 1e-9) {
-    const p = findProfile(profiles, sorted[0].profileId)
-    return p ? sampleProfilePoints(p, options) : null
-  }
-  const last = sorted[sorted.length - 1]
-  if (length >= last.length - 1e-9) {
-    const p = findProfile(profiles, last.profileId)
-    return p ? sampleProfilePoints(p, options) : null
-  }
+
+  if (!isStart)
+    length = length - 1e-8
 
   let prev = sorted[0]
   let next = sorted[sorted.length - 1]
@@ -346,6 +359,13 @@ export function interpolateProfileAtLength(length, profileAssignments, profiles,
       next = sorted[i + 1]
       break
     }
+  }
+
+  if (length < sorted[0].length - 1e-9) {
+    prev = next = sorted[0]
+  }
+  if (length > sorted[sorted.length - 1].length + 1e-9) {
+    prev = next = sorted[sorted.length - 1]
   }
   
   const p1 = findProfile(profiles, prev.profileId)
@@ -359,8 +379,8 @@ export function interpolateProfileAtLength(length, profileAssignments, profiles,
   if (!merged.length) return null
 
   return merged.map(({ point1, point2 }) => ({
-    x: point1.x * t + point2.x * (1 - t),
-    y: point1.y * t + point2.y * (1 - t),
+    x: point1.x * (1 - t) + point2.x * t,
+    y: point1.y * (1 - t) + point2.y * t,
   }))
 }
 
@@ -369,8 +389,8 @@ export function buildProfileSection3DRange(axisData, heightAssignments, profileA
   const centerB = getAxis3DPointsAtLength(axisData, heightAssignments, lengthB)
   const centerC = lengthC ? getAxis3DPointsAtLength(axisData, heightAssignments, lengthC) : null
 
-  const profileA = interpolateProfileAtLength(lengthA, profileAssignments, profiles, options)
-  const profileB = interpolateProfileAtLength(lengthB, profileAssignments, profiles, options)
+  const profileA = interpolateProfileAtLength(lengthA, profileAssignments, profiles, options, true)
+  const profileB = interpolateProfileAtLength(lengthB, profileAssignments, profiles, options, false)
 
   if (!profileA || !profileB || !profileA.length || !profileB.length) {
     return null
@@ -380,7 +400,6 @@ export function buildProfileSection3DRange(axisData, heightAssignments, profileA
   const frame = buildPerpendicularAxes(centerA, centerB)
   const frame1 = centerC ? buildPerpendicularAxes(centerB, centerC) : null
 
-  console.log(lengthA, centerA);
   const projectProfile = (center, pts, frame) => {
     const { xAxis, yAxis } = frame
     return pts.map((pt) => ({

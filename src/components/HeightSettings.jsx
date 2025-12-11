@@ -59,16 +59,23 @@ function HeightSettings({ axisData, heightAssignments, setHeightAssignments, tot
   }
 
   const removeAssignment = (idx) => {
+    const targetId = sorted[idx]?.id
+    if (!targetId) return
     setHeightAssignments(prev => {
       const arr = ensureIds([...(prev || [])])
       if (arr.length <= 2) return prev // keep at least two (0 and end)
-      const removed = arr.splice(idx, 1)[0]
-      if (removed?.id === selectedId) {
-        const next = arr[idx] || arr[idx - 1] || arr[0] || null
+      const filtered = arr.filter(a => a.id !== targetId)
+      if (filtered.length === arr.length) return prev
+
+      // Update selection
+      if (targetId === selectedId) {
+        const sortedFiltered = [...filtered].sort((a, b) => a.length - b.length)
+        const next = sortedFiltered[idx] || sortedFiltered[idx - 1] || sortedFiltered[0] || null
         setSelectedId(next ? next.id : null)
       }
-      persist(arr)
-      return arr
+
+      persist(filtered)
+      return filtered
     })
     setPendingSort(true)
   }
