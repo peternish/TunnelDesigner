@@ -261,35 +261,27 @@ function pointOnSegment(pt, a, b, tol = 1e-6) {
 }
 
 export function intersectProfileWithRay(targetPoint, sampledPoints, options = {}) {
-  let pts = sampledPoints || []
+  const pts = sampledPoints || []
   if (!pts.length || (!targetPoint.x && !targetPoint.y)) return null
 
   const centroid = compute2DCentroid(pts)
-  const targetPointOnSegment = { x: targetPoint.x + centroid.x, y: targetPoint.y + centroid.y }
   
-  // First check if the point is on any segment of the profile
-  for (let i = 0; i < pts.length - 1; i++) {
-    if (pointOnSegment(targetPointOnSegment, pts[i], pts[i + 1])) {
-      return { x: targetPointOnSegment.x, y: targetPointOnSegment.y }
-    }
-  }
-
-  // Otherwise, find intersection with ray from origin
-  const mag = Math.hypot(targetPoint.x, targetPoint.y)
+  // Ray starts from centroid and goes in the direction of targetPoint
+  const dirVec = { x: targetPoint.x, y: targetPoint.y }
+  const mag = Math.hypot(dirVec.x, dirVec.y)
   if (mag < 1e-9) return null
-  const dir = { x: targetPoint.x / mag, y: targetPoint.y / mag }
-  const origin = { x: 0, y: 0 }
-  pts = pts.map(p => ({ x: p.x - centroid.x, y: p.y - centroid.y }))
+  const dir = { x: dirVec.x / mag, y: dirVec.y / mag }
+  const origin = centroid
 
   let best = null
   for (let i = 0; i < pts.length - 1; i++) {
     const hit = raySegmentIntersection(origin, dir, pts[i], pts[i + 1])
-    if (hit && (best === null || hit.t < best.t)) {
+    if (hit && hit.t >= 0 && (best === null || hit.t < best.t)) {
       best = hit
     }
   }
 
-  return best ? { x: best.point.x + centroid.x, y: best.point.y + centroid.y } : null
+  return best ? best.point : null
 }
 
 export function compute2DCentroid(points = []) {

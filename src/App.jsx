@@ -141,10 +141,67 @@ function App() {
     }
   }, [heightAssignments, axisData])
 
+  const exportConfig = () => {
+    const config = {
+      version: '1.0',
+      axisPoints,
+      profiles,
+      profileAssignments,
+      heightAssignments,
+    }
+    const json = JSON.stringify(config, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'tunnel-config.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const importConfig = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const config = JSON.parse(e.target?.result || '{}')
+        if (config.axisPoints && Array.isArray(config.axisPoints)) {
+          setAxisPoints(config.axisPoints)
+        }
+        if (config.profiles && Array.isArray(config.profiles)) {
+          setProfiles(config.profiles)
+        }
+        if (config.profileAssignments && Array.isArray(config.profileAssignments)) {
+          setProfileAssignments(config.profileAssignments)
+        }
+        if (config.heightAssignments && Array.isArray(config.heightAssignments)) {
+          setHeightAssignments(config.heightAssignments)
+        }
+        alert('Config imported successfully!')
+      } catch (error) {
+        alert('Failed to import config: ' + error.message)
+      }
+    }
+    reader.readAsText(file)
+    // Reset file input
+    event.target.value = ''
+  }
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>Tunnel Designer</h1>
+        <div className="header-actions">
+          <button onClick={exportConfig} className="export-btn">Export Config</button>
+          <label className="import-btn">
+            <input type="file" accept=".json" onChange={importConfig} style={{ display: 'none' }} />
+            Import Config
+          </label>
+        </div>
         <nav className="tabs">
           <button
             className={activeTab === 'axis' ? 'active' : ''}
