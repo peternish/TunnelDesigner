@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import SegmentCanvas from './SegmentCanvas'
+import { computeAxisScale } from '../utils/geometry'
 import './AxisEditor.css'
 
 function AxisEditor({ axisData, setAxisData, axisPoints, setAxisPoints }) {
@@ -11,6 +12,12 @@ function AxisEditor({ axisData, setAxisData, axisPoints, setAxisPoints }) {
   const [zoom, setZoom] = useState(1)
   const [offset, setOffset] = useState({ x: canvasWidth / 2, y: canvasHeight / 2 })
   const [selectedPointId, setSelectedPointId] = useState(null)
+
+  // Compute axis scale for large coordinates (lat/long)
+  const axisScale = useMemo(() => {
+    if (!axisData || axisData.length === 0) return 1
+    return computeAxisScale(axisData, Math.min(canvasWidth, canvasHeight) * 0.8)
+  }, [axisData, canvasWidth, canvasHeight])
 
   // Whenever points change, rebuild axis segments, push to parent, and persist
   useEffect(() => {
@@ -239,6 +246,7 @@ function AxisEditor({ axisData, setAxisData, axisPoints, setAxisPoints }) {
             height={canvasHeight}
             zoom={zoom}
             offset={offset}
+            axisScale={axisScale}
             onDragEnd={(e) => {
               setOffset({ x: e.target.x(), y: e.target.y() })
             }}

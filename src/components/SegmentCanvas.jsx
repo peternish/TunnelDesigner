@@ -41,9 +41,11 @@ function SegmentCanvas({
   highlightedSegmentIndex = -1,
   highlightColor = '#e74c3c',
   highlightedPointId = null,
-  highlightPointColor = '#e74c3c'
+  highlightPointColor = '#e74c3c',
+  axisScale = 1
 }) {
   const toCanvasY = (y) => invertY ? -y : y
+  const scaleCoord = (val) => val * axisScale
 
   return (
     <Stage
@@ -120,10 +122,10 @@ function SegmentCanvas({
               <Line
                 key={index}
                 points={[
-                  segment.start.x,
-                  toCanvasY(segment.start.y),
-                  segment.end.x,
-                  toCanvasY(segment.end.y),
+                  scaleCoord(segment.start.x),
+                  toCanvasY(scaleCoord(segment.start.y)),
+                  scaleCoord(segment.end.x),
+                  toCanvasY(scaleCoord(segment.end.y)),
                 ]}
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
@@ -135,15 +137,15 @@ function SegmentCanvas({
 
           if (segment.type === 'arc' && segment.radius) {
             const canvasStart = {
-              x: segment.start.x,
-              y: toCanvasY(segment.start.y),
+              x: scaleCoord(segment.start.x),
+              y: toCanvasY(scaleCoord(segment.start.y)),
             }
             const canvasEnd = {
-              x: segment.end.x,
-              y: toCanvasY(segment.end.y),
+              x: scaleCoord(segment.end.x),
+              y: toCanvasY(scaleCoord(segment.end.y)),
             }
 
-            const pathData = generateArcPath(canvasStart, canvasEnd, segment.radius)
+            const pathData = generateArcPath(canvasStart, canvasEnd, segment.radius * axisScale)
             if (!pathData) return null
 
             return (
@@ -167,8 +169,8 @@ function SegmentCanvas({
           return (
             <Circle
               key={`pt-${pt.id}`}
-              x={pt.x}
-              y={toCanvasY(pt.y)}
+              x={scaleCoord(pt.x)}
+              y={toCanvasY(scaleCoord(pt.y))}
               radius={pointRadius}
               fill={isHighlighted ? highlightPointColor : pointColor}
             />

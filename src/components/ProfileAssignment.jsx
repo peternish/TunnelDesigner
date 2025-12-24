@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import SegmentCanvas from './SegmentCanvas'
 import './ProfileAssignment.css'
-import { calculateArcCenter, getPositionAtLength } from '../utils/geometry'
+import { calculateArcCenter, getPositionAtLength, computeAxisScale } from '../utils/geometry'
 
 function ProfileAssignment({ axisData, profiles, profileAssignments, setProfileAssignments, totalLength }) {
   const [selectedId, setSelectedId] = useState(null)
@@ -26,6 +26,12 @@ function ProfileAssignment({ axisData, profiles, profileAssignments, setProfileA
   )
   const selectedIndex = Math.max(0, sorted.findIndex(a => a.id === selectedId))
   const selected = sorted[selectedIndex] || sorted[0] || null
+
+  // Compute axis scale for large coordinates
+  const axisScale = useMemo(() => {
+    if (!axisData || axisData.length === 0) return 1
+    return computeAxisScale(axisData, Math.min(canvasWidth, canvasHeight) * 0.8)
+  }, [axisData, canvasWidth, canvasHeight])
 
   const handleAssignProfile = (idx, value) => {
     const profileId = value === '' ? null : parseInt(value, 10)
@@ -177,6 +183,7 @@ function ProfileAssignment({ axisData, profiles, profileAssignments, setProfileA
                   showOrigin={true}
                   invertY={true}
                   width={canvasWidth}
+                  axisScale={axisScale}
                   height={canvasHeight}
                   zoom={1}
                   offset={{ x: canvasWidth / 2, y: canvasHeight / 2 }}

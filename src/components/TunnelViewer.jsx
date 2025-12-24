@@ -1,7 +1,7 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { buildProfileSection3DRange, collectSampleLengths, __private__ } from '../utils/geometry'
+import { buildProfileSection3DRange, collectSampleLengths, computeAxisScale, __private__ } from '../utils/geometry'
 import './TunnelViewer.css'
 
 function TunnelViewer({ axisData, profiles, profileAssignments, heightAssignments, invertY = true }) {
@@ -44,22 +44,26 @@ function TunnelViewer({ axisData, profiles, profileAssignments, heightAssignment
     const axisGroup = new THREE.Group()
     const tunnelGroup = new THREE.Group()
 
+    // Compute axis scale for large coordinates (lat/long)
+    const axisScale = axisData && axisData.length > 0 
+      ? computeAxisScale(axisData, 1000) 
+      : 1
+
     // Draw axis polyline (for reference)
     if (axisData && axisData.length > 0) {
       const axisMaterial = new THREE.LineBasicMaterial({ color: 0x2c3e50 })
       const axisGeometry = new THREE.BufferGeometry()
       const axisPoints3D = []
 
-      const SCALE = 1
       const yScale = invertY ? -1 : 1
       axisData.forEach((segment, idx) => {
         if (idx === 0) {
           axisPoints3D.push(
-            new THREE.Vector3(segment.start.x * SCALE, 0, segment.start.y * SCALE * yScale)
+            new THREE.Vector3(segment.start.x * axisScale, 0, segment.start.y * axisScale * yScale)
           )
         }
         axisPoints3D.push(
-          new THREE.Vector3(segment.end.x * SCALE, 0, segment.end.y * SCALE * yScale)
+          new THREE.Vector3(segment.end.x * axisScale, 0, segment.end.y * axisScale * yScale)
         )
       })
 
@@ -103,8 +107,9 @@ function TunnelViewer({ axisData, profiles, profileAssignments, heightAssignment
       const positions = []
       const indices = []
 
-      profile1Points.forEach((p) => positions.push(p.x, p.y, invertY ? -p.z : p.z))
-      profile2Points.forEach((p) => positions.push(p.x, p.y, invertY ? -p.z : p.z))
+      // Scale X and Z (from 2D axis), but not Y (height)
+      profile1Points.forEach((p) => positions.push(p.x * axisScale, p.y, invertY ? -p.z * axisScale : p.z * axisScale))
+      profile2Points.forEach((p) => positions.push(p.x * axisScale, p.y, invertY ? -p.z * axisScale : p.z * axisScale))
 
       for (let i = 0; i < radialCount; i++) {
         const nextI = (i + 1) % radialCount

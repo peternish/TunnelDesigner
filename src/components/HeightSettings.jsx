@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import SegmentCanvas from './SegmentCanvas'
 import './ProfileAssignment.css'
-import { calculateArcCenter, getPositionAtLength } from '../utils/geometry'
+import { calculateArcCenter, getPositionAtLength, computeAxisScale } from '../utils/geometry'
 
 function HeightSettings({ axisData, heightAssignments, setHeightAssignments, totalLength }) {
   const [selectedId, setSelectedId] = useState(null)
@@ -93,6 +93,14 @@ function HeightSettings({ axisData, heightAssignments, setHeightAssignments, tot
   const markerPos = selected ? getPositionAtLength(axisData, selected.length) : null
   const marker = markerPos ? [{ id: 'marker', x: markerPos.x, y: markerPos.y }] : []
 
+  // Compute axis scale for large coordinates
+  const canvasWidth = (window.innerWidth - 600) / 2
+  const canvasHeight = window.innerHeight - 400
+  const axisScale = useMemo(() => {
+    if (!axisData || axisData.length === 0) return 1
+    return computeAxisScale(axisData, Math.min(canvasWidth, canvasHeight) * 0.8)
+  }, [axisData, canvasWidth, canvasHeight])
+
   // Build height graph points
   const graphPoints = sorted.map(h => [h.length, h.height])
 
@@ -165,10 +173,11 @@ function HeightSettings({ axisData, heightAssignments, setHeightAssignments, tot
                   showAxes={true}
                   showOrigin={true}
                   invertY={true}
-                  width={(window.innerWidth - 600) / 2}
-                  height={window.innerHeight - 400}
+                  width={canvasWidth}
+                  height={canvasHeight}
                   zoom={1}
-                  offset={{ x: (window.innerWidth - 600) / 4, y: (window.innerHeight - 400) / 2 }}
+                  offset={{ x: canvasWidth / 2, y: canvasHeight / 2 }}
+                  axisScale={axisScale}
                   onDragEnd={() => {}}
                   highlightedPointId={markerPos ? 'marker' : null}
                   highlightPointColor="#e74c3c"

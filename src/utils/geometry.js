@@ -1,3 +1,28 @@
+export function computeAxisScale(axisData, targetSize = 1000) {
+  if (!axisData || axisData.length === 0) return 1
+  
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  
+  axisData.forEach(seg => {
+    minX = Math.min(minX, seg.start.x, seg.end.x)
+    maxX = Math.max(maxX, seg.start.x, seg.end.x)
+    minY = Math.min(minY, seg.start.y, seg.end.y)
+    maxY = Math.max(maxY, seg.start.y, seg.end.y)
+  })
+  
+  const rangeX = maxX - minX
+  const rangeY = maxY - minY
+  const maxRange = Math.max(rangeX, rangeY)
+  
+  if (maxRange < 1e-6) return 1
+  
+  // Scale so that the largest dimension fits in targetSize
+  return targetSize / maxRange
+}
+
 export function calculateArcCenter(start, end, radius) {
   const R = Math.abs(radius)
   if (!R) return null
